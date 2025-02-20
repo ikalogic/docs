@@ -75,7 +75,7 @@ int main()
 
 ## Full example (no trigger)
 
-The following examples show how to open a seek for a device, open it, and capture some samples. Then, the first 10 transitions on channel 1 are dumped to the console. This simple example do not wait for any trigger condition, it just captures the signals once launched.
+The following examples show how to seek for a device, open it, and capture some samples. Then, display the total number of received samples. This simple example do not wait for any trigger condition, it just captures the signals once launched.
 
 :::caution Note
 Even though no trigger is needed, the function to start a capture is still called: `sp209api_launch_new_capture_simple_trigger`. The trigger configuration (or the fact that we don't need any trigger) is defined by setting the trigger type to `SP209API_TRG_NOTRIG`.
@@ -84,6 +84,10 @@ Even though no trigger is needed, the function to start a capture is still calle
 
 ```cpp
 
+#include <thread>
+#include <iostream>
+#include <string.h>
+
 #include "sp259api.h"
 
 void msleep(int ms)
@@ -91,6 +95,14 @@ void msleep(int ms)
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
+void assert_err(ihwapi_err_code_t e)
+{
+    if (e != ihwapi_err_code_t::IHWAPI_OK)
+    {
+        std::cout << "Error thrown by API " << uint32_t(e) << std::endl;
+        throw std::runtime_error("unhandled error");
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -162,6 +174,21 @@ int main(int argc, char *argv[])
             std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +"K, post-trig:" << post / 1000 << "K" << std::endl;
         }
 
+        const uint8_t ch = 1;
+        sp259api_trs_t trs;
+        sp259api_trs_reset(h, ch);
+        trs.sampple_index = 0;
+        bool is_not_last = true;
+        int trs_count = 0;
+
+        while (is_not_last && trs_count < 10)
+        {
+            sp259api_trs_get_next(h, ch, &trs);
+            printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
+            sp259api_trs_is_not_last(h, ch, &is_not_last);
+            trs_count++;
+        }
+
         e = sp259api_get_last_error(h);
 
         e = sp259api_request_abort(h);
@@ -182,14 +209,23 @@ int main(int argc, char *argv[])
         return 0;
     }
 }
+
+
 ```
 
 ## Adding a trigger
 
-The example code below shows the trigger description configuration if you want to wait for a logic change on channel 1 to generate a trigger:
+The example code below shows the trigger description configuration if you want to wait for a logic change on channel 0 to generate a trigger:
 
 ```cpp
-sp209api_trigger_description_t trg;
-trg.type = sp209api_trigger_type_t::SP209API_TRG_CHANGE;
-trg.channel = 1;
+sp259api_trigger_description_t trig_a, trig_b;
+trig_a.type = sp259api_trigger_type_t::SP259API_TRG_CHANGE;
+trig_a.channel = 0;
+trig_b.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+trig_b.channel = -1;
+settings.trig_order = 3; //important!
 ```
+
+!:::caution Important note
+It's important to set trig_order to 3 (Trigger A and B) even though we're only using one trigger engine. The reason behind that is that if trigger B is set to "NO_TRIG", it will generate a trigger instantly, so we still need to wait for trigger A (waiting for the logic change on channel 0).
+:::
