@@ -2,7 +2,7 @@
 title: Structures, Enums, and Defines
 sidebar_position: 1
 ---
-# SP1000G API: Enums, Structures, and Defines
+# SP1000G API Types and Structures
 
 This document provides detailed information on the enumerations, structures, and macros used in the **SP1000G API**.
 

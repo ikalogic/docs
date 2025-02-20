@@ -3,7 +3,7 @@ title: Structures, Enums, and Defines
 sidebar_position: 1
 ---
 
-# SP209 API - Structures, Enums, and Defines
+# SP209 API Types and Structures
 
 This document provides an overview of the key **structures, enums, and defines** used in the SP209 API.
 
