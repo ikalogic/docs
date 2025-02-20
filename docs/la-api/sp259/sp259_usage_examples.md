@@ -3,66 +3,74 @@ title: Usage example
 sidebar_position: 3
 ---
 
-# SP209 API Usage Examples
+# SP259 API: Usage Examples
 
-## Listing Available Devices
+This document provides practical **C/C++** examples demonstrating how to use the **SP259 API**.
+
+## **Listing Available Devices**
+
+The following example lists the number of available **SP259** devices connected via USB.
 
 ```cpp
-device_descriptor_t* devices;
-uint16_t device_count = 0;
+#include <iostream>
+#include "sp259api.h"
 
-sp209api_create_device_list(handle);
-sp209api_get_devices_count(handle, &device_count);
+int main()
+{
+    sp259api_handle h;
+    uint16_t devices_count = 0;
 
-for (uint8_t i = 0; i < device_count; i++) {
-    sp209api_get_device_descriptor(handle, i, &devices[i]);
-    printf("Device %d: Serial: %s, Description: %s\n", i, devices[i].sn, devices[i].desc);
+    sp259api_create_new_handle(&h, sp259api_model_t::sp259_industrial);
+    sp259api_create_device_list(h);
+    sp259api_get_devices_count(h, &devices_count);
+    std::cout << "Number of detected devices: " << devices_count << std::endl;
+    sp259api_free_device_list(h);
+    sp259api_free(h);
+
+    return 0;
 }
 ```
 
 ## Opening a device
 
 :::note Note
-The code blow opens an SP209i (industrial 2029), but you can easily make it open a standard SP209 device by replacing `sp209api_device_model_t::SP209API_MODEL_209I` with `sp209api_device_model_t::SP209API_MODEL_209`.
+The code blow opens an SP259i (industrial 259), but you can easily make it open a standard SP209 device by replacing `sp259api_model_t::sp259_industrial` with `sp259api_model_t::sp259_standard`.
 :::
 
 
 ```cpp
-sp209api_handle h;
-device_descriptor_t d;
-int devices_count = 0;
-ihwapi_err_code_t e;
+#include <iostream>
+#include "sp259api.h"
 
-// Create a new API handle
-sp209api_create_new_handle(&h, sp209api_device_model_t::SP209API_MODEL_209I);
-
-// Scan for available devices
-sp209api_create_device_list(h);
-sp209api_get_devices_count(h, &devices_count);
-
-printf("Found %d devices\n", devices_count);
-
-if (devices_count > 0)
+int main()
 {
-    // Retrieve the first device descriptor
-    sp209api_get_device_descriptor(h, 0, &d);
-    printf("New device, serial number = %s, description = %s\n", d.sn, d.desc);
+    sp259api_handle h;
+    device_descriptor_t d;
+    uint16_t devices_count = 0;
+    ihwapi_err_code_t e;
 
-    // Open the device
-    e = sp209api_device_open(h, d, SP209API_VARIANT_STD);
-    if (e == IHWAPI_OK)
+    sp259api_create_new_handle(&h, sp259api_model_t::sp259_industrial);
+    sp259api_create_device_list(h);
+    sp259api_get_devices_count(h, &devices_count);
+
+    if (devices_count > 0)
     {
-        printf("Device is open\n");
+        sp259api_get_device_descriptor(h, 0, &d);
+        std::cout << "Device found: SN = " << d.sn << ", Description = " << d.desc << std::endl;
+
+        e = sp259api_device_open(h, d);
+        if (e == IHWAPI_OK)
+            std::cout << "Device successfully opened." << std::endl;
+        else
+            std::cout << "Failed to open device! Error: " << e << std::endl;
     }
-    else
-    {
-        printf("Device not open! Error code = %d\n", e);
-    }
+
+    sp259api_free_device_list(h);
+    sp259api_free(h);
+
+    return 0;
 }
 
-// Clean up
-sp209api_free_device_list(h);
-sp209api_free(h);
 ```
 
 ## Full example (no trigger)
@@ -75,130 +83,105 @@ Even though no trigger is needed, the function to start a capture is still calle
 
 
 ```cpp
-int main()
+
+#include "sp259api.h"
+
+void msleep(int ms)
 {
-    sp209api_handle h;
-    device_descriptor_t d;
-    ihwapi_err_code_t e = IHWAPI_DEVICE_NOT_OPEN;
-    sp209api_settings_t settings;
-    uint16_t devices_count = 0;
-    int64_t samples_count = 0;
-    int64_t post_trig_samples = 0;
-    sp209api_trs_t trs;
-
-    // Create API handle and scan for devices
-    sp209api_create_new_handle(&h, sp209api_device_model_t::SP209API_MODEL_209I);
-    sp209api_create_device_list(h);
-    sp209api_get_devices_count(h, &devices_count);
-    printf("Found %d devices\n", devices_count);
-
-    if (devices_count > 0)
-    {
-        // Retrieve and open the first device
-        sp209api_get_device_descriptor(h, 0, &d);
-        printf("New device, serial number = %s, description = %s\n", d.sn, d.desc);
-        e = sp209api_device_open(h, d, SP209API_VARIANT_STD);
-
-        if (e == IHWAPI_OK)
-        {
-            printf("Device is open\n");
-        }
-        else
-        {
-            printf("Device not open! Error code = %d\n", e);
-        }
-    }
-
-    // Free the device list memory
-    sp209api_free_device_list(h);
-
-    if (e == IHWAPI_OK)
-    {
-        // Configure capture settings
-        memset(&settings, 0, sizeof(settings));
-        settings.sampling_depth = 250e3;
-        settings.post_trig_depth = settings.sampling_depth * 0.9;
-        settings.thresh_cfg[0] = SP209API_X_TH_3V3;
-        settings.thresh_cfg[1] = SP209API_X_TH_3V3;
-        settings.thresh_cfg[2] = SP209API_X_TH_3V3;
-
-        // Configure trigger
-        sp209api_trigger_description_t trg;
-        trg.type = SP209API_TRG_NOTRIG;
-        trg.channel = 1;
-
-        e = sp209api_launch_new_capture_simple_trigger(h, trg, settings);
-        bool cfg_done = false;
-
-        if (e == IHWAPI_OK)
-        {
-            while (!cfg_done)
-            {
-                sp209api_get_config_done_flag(h, &cfg_done);
-                msleep(200);
-            }
-            printf("Device Config done, new capture launched\n");
-        }
-        else
-        {
-            printf("Launch New capture error = %d\n", e);
-        }
-    }
-
-    if (e == IHWAPI_OK)
-    {
-        // Wait for trigger event
-        printf("Waiting for trigger...\n");
-        bool trig_flag = false;
-
-        while (!trig_flag)
-        {
-            sp209api_get_triggered_flag(h, &trig_flag);
-            msleep(200);
-        }
-
-        printf("Triggered!\n");
-
-        // Wait for capture to complete
-        bool capt_done = false;
-        while (!capt_done)
-        {
-            sp209api_get_capture_done_flag(h, &capt_done);
-            msleep(200);
-        }
-
-        // Retrieve and display transitions
-        const uint8_t ch = 1;
-        sp209api_get_available_samples(h, &samples_count, &post_trig_samples);
-        sp209api_trs_reset(h, ch);
-        trs.sampple_index = 0;
-
-        printf("Capture done, total captured samples = %lld\n", samples_count);
-        bool is_not_last = true;
-        int trs_count = 0;
-
-        while (is_not_last && trs_count < 10)
-        {
-            sp209api_trs_get_next(h, ch, &trs);
-            printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
-            sp209api_trs_is_not_last(h, ch, &is_not_last);
-            trs_count++;
-        }
-    }
-
-    if (e == IHWAPI_OK)
-    {
-        printf("Closing device\n");
-        sp209api_device_power_off(h);
-    }
-
-    // Free API handle
-    sp209api_free(h);
-    printf("Done\n");
-
-    return 0;
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
+
+int main(int argc, char *argv[])
+{
+    sp259api_handle h;
+    device_descriptor_t d;
+    ihwapi_err_code_t e = IHWAPI_DEVICE_NOT_OPEN;
+
+    // Create API handle and scan for devices
+    sp259api_create_new_handle(&h, sp259api_model_t::sp259_industrial);
+    sp259api_create_device_list(h);
+    e = sp259api_device_open_first(h);
+    // Free the device list memory
+    sp259api_free_device_list(h);
+
+    if (e == IHWAPI_OK)
+    {
+        sp259api_settings_t settings;
+        memset(&settings, 0, sizeof(settings));
+        settings.sampling_depth = 10e6;                           // 50e6;
+        settings.post_trig_depth = settings.sampling_depth * 0.9; // 5000e6; //float(settings.sampling_depth)*0.1f;
+        settings.s_clk = 250e6;
+        settings.state_clk_mode = sp259api_state_clk_mode_t::SCLK_DISABLE;
+        settings.ext_trig_50r = false;
+        for(int i=0; i<SP259_THRESHOLDS_COUNT; i++)
+        {
+            settings.target_vcc[i] = sp259api_target_vcc_t::SP259API_VCC_3V3;
+        }
+        sp259api_trigger_description_t trig_a, trig_b;
+        trig_a.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+        trig_a.channel = -1;
+        trig_b.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+        trig_b.channel = -1;
+
+
+
+        e = sp259api_get_last_error(h);
+        e = sp259api_launch_new_capture_simple_trigger(h, trig_a, trig_b, settings);
+        e = sp259api_get_last_error(h);
+
+
+        bool cfg_done = false;
+        while (cfg_done == false)
+        {
+            e = sp259api_get_config_done_flag(h, &cfg_done);
+            msleep(10);
+        }
+        std::cout << "cfg done!\n"
+                  << std::endl;
+
+        bool trg_flag = false;
+        while (trg_flag == false)
+        {
+            std::cout << "Waiting for trigger" << std::endl;
+            e = sp259api_get_triggered_flag(h, &trg_flag);
+            msleep(100);
+        }
+
+        std::cout << "Trigged, ready for data!" << std::endl;
+
+        int64_t total = 0;
+        int64_t pre = 0;
+        int64_t post = 0;
+
+        while (post < settings.post_trig_depth)
+        {
+            e = sp259api_get_available_samples(h, &total, &post);
+            msleep(100);
+
+            std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +"K, post-trig:" << post / 1000 << "K" << std::endl;
+        }
+
+        e = sp259api_get_last_error(h);
+
+        e = sp259api_request_abort(h);
+
+        bool ready = false;
+        while (!ready)
+        {
+            std::cout << "Waiting for abort\n"
+                      << std::endl;
+            msleep(100);
+            e = sp259api_get_ready_flag(h, &ready);
+        }
+
+        e = sp259api_free(h);
+        std::cout << "device freed\n"
+                  << std::endl;
+
+        return 0;
+    }
+}
 ```
 
 ## Adding a trigger

@@ -7,8 +7,6 @@ slug: /
 
 ![](/img/intro_image2.jpg)
 
-## Ikalogic Documentation Portal
-
 Welcome to the Ikalogic Documentation Portal, your comprehensive resource for all things related to Ikalogic test and measurement solutions. Whether you're an engineer, developer, or researcher, this portal provides the necessary tools, guides, and API references to help you integrate and maximize the potential of our products.
 
 ## What You'll Find Here

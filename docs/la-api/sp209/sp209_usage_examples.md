@@ -23,7 +23,7 @@ for (uint8_t i = 0; i < device_count; i++) {
 ## Opening a device
 
 :::note Note
-The code blow opens an SP209i (industrial 2029), but you can easily make it open a standard SP209 device by replacing `sp209api_device_model_t::SP209API_MODEL_209I` with `sp209api_device_model_t::SP209API_MODEL_209`.
+The code blow opens an SP209i (industrial 209), but you can easily make it open a standard SP209 device by replacing `sp209api_device_model_t::SP209API_MODEL_209I` with `sp209api_device_model_t::SP209API_MODEL_209`.
 :::
 
 
