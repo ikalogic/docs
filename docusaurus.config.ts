@@ -84,11 +84,11 @@ const config: Config = {
                             sidebarId: 'la_api',
                             label: 'Logic Analyzers API',
                         },
-                        {
-                            type: 'docSidebar',
-                            sidebarId: 'at1000_api',
-                            label: 'AT1000 API',
-                        },
+                        // {
+                        //     type: 'docSidebar',
+                        //     sidebarId: 'at1000_api',
+                        //     label: 'AT1000 API',
+                        // },
                     ],
                 },
                 
