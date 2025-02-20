@@ -4,221 +4,328 @@ sidebar_position: 2
 ---
 # SP259 API Reference
 
-## **Library Instance Management**
+This document details every function available in the SP259 device API. For each function, a description is provided along with its parameters and return values.
 
-### `sp259api_create_new_handle`
-Creates a new API handle.
+## Library Instance Management
 
-```cpp
-ihwapi_err_code_t sp259api_create_new_handle(sp259api_handle *handle, sp259api_model_t model);
-```
-#### **Parameters**
-- `handle` - Pointer to a variable where the newly created API handle will be stored.
-- `model` - Specifies the SP259 device model.
+### sp259api_create_new_handle
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
-- An error code if the operation fails.
+**Description:**  
+Creates a new handle that can be later used to call the functions of this API.
 
-### `sp259api_free`
-Frees the API handle and releases allocated memory.
+**Parameters:**
+- `sp259api_handle *handle`: Pointer to a handle variable where the newly created handle will be stored.
+- `sp259api_model_t model`: Specifies the device model to be used when creating the handle.
 
-```cpp
-ihwapi_err_code_t sp259api_free(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle to be freed.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code indicating the success or failure of the operation.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
-- An error code if the operation fails.
+### sp259api_free
 
-## **Device Listing Functions**
+**Description:**  
+Clears a handle by freeing all the memory used by it.
 
-### `sp259api_create_device_list`
-Scans for available devices.
+**Parameters:**
+- `sp259api_handle handle`: The handle to be freed.
 
-```cpp
-ihwapi_err_code_t sp259api_create_device_list(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
-- An error code if the operation fails.
+## Device Listing Functions
 
-### `sp259api_free_device_list`
-Frees the memory allocated for the list of devices.
+### sp259api_create_device_list
 
-```cpp
-ihwapi_err_code_t sp259api_free_device_list(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle.
+**Description:**  
+Creates (or updates) the list of SP259 devices that can be found on the USB.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
 
-### `sp259api_get_devices_count`
-Retrieves the number of detected devices.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-```cpp
-ihwapi_err_code_t sp259api_get_devices_count(sp259api_handle handle, uint16_t *count);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `count` - Pointer to store the number of detected devices.
+### sp259api_free_device_list
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Description:**  
+Frees the memory used to store the list of current devices.
 
-### `sp259api_get_device_descriptor`
-Gets the descriptor of a device.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
 
-```cpp
-ihwapi_err_code_t sp259api_get_device_descriptor(sp259api_handle handle, uint8_t device_number, device_descriptor_t *d);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `device_number` - The index of the device in the list.
-- `d` - Pointer to store the device descriptor.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+### sp259api_get_devices_count
 
-## **Device Operations**
+**Description:**  
+Retrieves the number of devices that were found when the device list was created with `sp259api_create_device_list`.
 
-### `sp259api_device_open`
-Opens an SP259 device.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint16_t *count`: Pointer to a variable where the number of devices will be stored.
 
-```cpp
-ihwapi_err_code_t sp259api_device_open(sp259api_handle handle, device_descriptor_t desc);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `desc` - The device descriptor.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-#### **Returns**
-- `IHWAPI_OK` if the device is successfully opened.
+### sp259api_get_device_descriptor
 
-### `sp259api_device_open_first`
-Opens the first available SP259 device.
+**Description:**  
+Obtains the device descriptor for a device on the bus. The function `sp259api_create_device_list` must be called before invoking this function. The device descriptor is required to open an SP259 device.
 
-```cpp
-ihwapi_err_code_t sp259api_device_open_first(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t device_number`: The 0-based index of the device.
+- `device_descriptor_t *d`: Pointer where the device descriptor will be written (the user does not need to allocate memory for this).
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-### `sp259api_device_close`
-Closes an open SP259 device.
+## General Device Commands (Common to All Variants)
 
-```cpp
-ihwapi_err_code_t sp259api_device_close(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle.
+### sp259api_device_open
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Description:**  
+Opens an SP259 device using a device descriptor.  
+*Note:* The function comment mentions a "variant" parameter for specifying the device operation mode (to support devices with custom firmware), but in the signature only the device descriptor is provided.
 
-## **Capture and Data Retrieval**
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `device_descriptor_t desc`: The device descriptor of the SP259 device to be opened.
 
-### `sp259api_launch_new_capture_simple_trigger`
-Starts a new capture session.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-```cpp
-ihwapi_err_code_t sp259api_launch_new_capture_simple_trigger(sp259api_handle handle, sp259api_trigger_description_t trig, sp259api_trigger_description_t trig_b, sp259api_settings_t settings);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `trig` - The first trigger configuration.
-- `trig_b` - The second trigger configuration.
-- `settings` - The capture settings.
+### sp259api_device_open_first
 
-#### **Returns**
-- `IHWAPI_OK` if the capture session is started successfully.
+**Description:**  
+Opens the first available SP259 device found.
 
-### `sp259api_get_config_done_flag`
-Checks if device configuration is completed.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
 
-```cpp
-ihwapi_err_code_t sp259api_get_config_done_flag(sp259api_handle handle, bool *f);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `f` - Pointer to store the configuration status.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+### sp259api_device_close
 
-### `sp259api_get_triggered_flag`
-Checks if a trigger event has occurred.
+**Description:**  
+Closes the currently opened SP259 device.
 
-```cpp
-ihwapi_err_code_t sp259api_get_triggered_flag(sp259api_handle handle, bool *f);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `f` - Pointer to store the trigger flag status.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-### `sp259api_get_trigger_position`
-Retrieves the trigger position in samples.
+### sp259api_get_fpga_version
 
-```cpp
-ihwapi_err_code_t sp259api_get_trigger_position(sp259api_handle handle, uint64_t *trig_pos);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `trig_pos` - Pointer to store the trigger position.
+**Description:**  
+Retrieves the FPGA version of the opened SP259 device.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t *v`: Pointer to a variable where the FPGA version will be stored.
 
-### `sp259api_get_available_samples`
-Gets the number of captured samples.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-```cpp
-ihwapi_err_code_t sp259api_get_available_samples(sp259api_handle handle, int64_t *total_available_samples, int64_t *post_trig_samples);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `total_available_samples` - Pointer to store the total samples count.
-- `post_trig_samples` - Pointer to store post-trigger sample count.
+### sp259api_get_hw_version
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+**Description:**  
+Retrieves the hardware version of the opened SP259 device.
 
-### `sp259api_trs_get_next`
-Gets the next logic transition for a channel.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t *v`: Pointer to a variable where the hardware version will be stored.
 
-```cpp
-ihwapi_err_code_t sp259api_trs_get_next(sp259api_handle handle, uint8_t channel_index, sp259api_trs_t *transition_data);
-```
-#### **Parameters**
-- `handle` - The API handle.
-- `channel_index` - The channel index.
-- `transition_data` - Pointer to store transition data.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
-#### **Returns**
-- `IHWAPI_OK` if successful.
+### sp259api_get_device_open_flag
 
-### `sp259api_get_last_error`
-Retrieves the last error thrown by the API.
+**Description:**  
+Returns a boolean flag indicating whether the device is open (i.e., if the connection is still active).
 
-```cpp
-ihwapi_err_code_t sp259api_get_last_error(sp259api_handle handle);
-```
-#### **Parameters**
-- `handle` - The API handle.
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `bool *f`: Pointer to a boolean variable that will be set to `true` if the device is open.
 
-#### **Returns**
-- The last error code.
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
 
+### sp259api_request_abort
+
+**Description:**  
+Requests that any pending operation be aborted. This function returns immediately without verifying whether the operation was effectively aborted.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_launch_new_capture_simple_trigger
+
+**Description:**  
+Starts a new capture of samples. Capture begins as soon as possible after the function is called. This function does not offer any trigger options.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `sp259api_trigger_description_t trig`: The first trigger description to be used for this capture.
+- `sp259api_trigger_description_t trig_b`: The second trigger description to be used for this capture.
+- `sp259api_settings_t settings`: The settings to be used for the SP259 device capture.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_config_done_flag
+
+**Description:**  
+Checks if the device has finished its internal configuration after a request to launch a new capture. Although the device usually configures in a few milliseconds, this function is available for feedback and monitoring purposes.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `bool *f`: Pointer to a boolean variable that will be set to `true` if configuration is done and `false` otherwise.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_triggered_flag
+
+**Description:**  
+Retrieves a flag indicating whether the device has triggered.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `bool *f`: Pointer to a boolean variable that will be set to `true` if the device has triggered.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_trigger_position
+
+**Description:**  
+Gets the trigger position expressed in samples.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint64_t *trig_pos`: Pointer to a variable where the trigger position will be stored.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_available_samples
+
+**Description:**  
+Retrieves the number of samples that have been read from the device, buffered, and are ready for readout. It provides both the total available samples and the number of samples after the trigger condition.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `int64_t *total_available_samples`: Pointer to a variable to hold the total number of available samples.
+- `int64_t *post_trig_samples`: Pointer to a variable to hold the number of samples captured after the trigger.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+## Transitions Iterator Functions
+
+### sp259api_trs_reset
+
+**Description:**  
+Resets the transitions iterator for the specified channel. After calling this function, the next call to `trs_get_next()` will retrieve the very first transition.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t channel_index`: The index of the channel for which the iterator will be reset.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_trs_before
+
+**Description:**  
+Resets the transitions iterator for the specified channel and positions it right before the given target sample. After this call, the next call to `trs_get_next()` will retrieve the first transition occurring after `target_sample`.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t channel_index`: The index of the channel.
+- `uint64_t target_sample`: The sample position before which the iterator will be reset.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_trs_get_next
+
+**Description:**  
+Advances the transition iterator for the specified channel to the next transition and writes its details into the provided structure. Prior to calling this function, the user must call either `trs_reset()` or `trs_before()`.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t channel_index`: The index of the channel.
+- `sp259api_trs_t *transition_data`: Pointer to a structure where the details of the transition will be stored.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_trs_get_previous
+
+**Description:**  
+Rewinds the transition iterator for the specified channel to the previous transition and writes the details into the provided structure. This function is similar to `trs_get_next()` but in reverse.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t channel_index`: The index of the channel.
+- `sp259api_trs_t *transition_data`: Pointer to a structure where the details of the transition will be stored.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_trs_is_not_last
+
+**Description:**  
+Determines whether the current transition pointed to by the iterator for the specified channel is the last transition. The output flag is set to `true` if there are further transitions available.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `uint8_t channel_index`: The index of the channel.
+- `bool *is_not_last_trs`: Pointer to a boolean variable that will be set to `true` if the current transition is not the last one.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+## Capture Status Functions
+
+### sp259api_get_capture_done_flag
+
+**Description:**  
+Checks if the current capture is finished and all data has been retrieved from the device. In the case of an error or an aborted capture, this flag will always return `false`.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `bool *f`: Pointer to a boolean variable that will hold the state of the `capture done` flag.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_ready_flag
+
+**Description:**  
+Determines if the device is ready or if an operation is still in progress.
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+- `bool *f`: Pointer to a boolean variable that will hold the state of the `ready` flag.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.
+
+### sp259api_get_last_error
+
+**Description:**  
+Returns the last error that may have been thrown by the API’s internal threads. This can be useful for diagnosing unexpected behavior or abnormal response times (for example, if the `config_done` flag never becomes `true`).
+
+**Parameters:**
+- `sp259api_handle handle`: The handle associated with the API instance.
+
+**Return Value:**  
+Returns an `ihwapi_err_code_t` error code.

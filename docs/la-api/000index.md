@@ -5,13 +5,19 @@ sidebar_position: 1
 ---
 
 ## Overview
-The **Logic Analyzer API** (also referred to as **IHWAPI**, short for **Ikalogic Hardware API**) is a collection of libraries (**DLLs for Windows, SO files for Linux/macOS**) that allows users to interface with Ikalogic's logic analyzer devices programmatically.
+The **Logic Analyzer API** (also referred to as **IHWAPI**, which is a - legacy - short term for **Ikalogic Hardware API**) is a collection of libraries (**DLLs for Windows, SO files for Linux/macOS**) that allows users to interface with Ikalogic's logic analyzer devices programmatically.
 
 :::note Note
 This API is designed for seamless integration with various programming languages and environments, including **C, C++, C#, and Visual Basic**, thanks to its ABI compatibility. However, official support is currently provided only through C header files. If additional language bindings are required, we welcome feedback on possible expansions.
 :::
 
 The API maintains a consistent structure across different devices to ensure a unified experience. However, due to inherent hardware differences, some variations in functionality may exist.
+
+:::caution Known limitations
+
+Ikalogic logic analyzer devices are designed to operate using **ScanaStudio** software. While it's possible to achieve equivalent signal capture results using the API, the signal generation features as well as advanced trigger features are only available via ScanaStudio for the time being.
+
+:::
 
 
 ## API Workflow
@@ -39,154 +45,194 @@ Instead of storing every individual sample, only **logic transitions** are recor
 ### Processing Transitions
 Internally, each logic channel maintains an **iterator** that retrieves stored transitions efficiently. Before reading transitions, the iterator must be reset using the appropriate API function:
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="la-device">
+<TabItem value="sp259" label="SP259 series">
+
 ```cpp
-DEVICEAPI_trs_reset(); // Resets iterator to the first transition
+sp259api_trs_reset(); // Resets iterator to the first transition
 ```
 
-Subsequently, the transitions are retrieved sequentially using:
+</TabItem>
+<TabItem value="sp1000" label="SP1000G series">
+
 ```cpp
-DEVICEAPI_trs_get_next();
+sp1000gapi_trs_reset(); // Resets iterator to the first transition
 ```
+
+</TabItem>
+<TabItem value="sp209" label="SP209 series">
+
+```cpp
+sp209api_trs_reset(); // Resets iterator to the first transition
+```
+
+</TabItem>
+</Tabs>
+
+
+Subsequently, the transitions are retrieved sequentially using:
+
+<Tabs groupId="la-device">
+<TabItem value="sp259" label="SP259 series">
+
+```cpp
+sp259api_trs_get_next(); // Resets iterator to the first transition
+```
+
+</TabItem>
+<TabItem value="sp1000" label="SP1000G series">
+
+```cpp
+sp1000gapi_trs_get_next(); // Resets iterator to the first transition
+```
+
+</TabItem>
+<TabItem value="sp209" label="SP209 series">
+
+```cpp
+sp209api_trs_get_next(); // Resets iterator to the first transition
+```
+
+</TabItem>
+</Tabs>
+
 until the last transition is reached.
 
 :::info More about iterators
-Under the hood, the API have an iterator attached to each logic channel. The job of the iterator is to fetch the logic transitions (i.e. logic change) from the compressed storage, and provide it the user of the API, in the most efficient way (offering very fast fetching with minimal memory and processor impact). As with the scripting API, the iterator for each channel needs to be reset, before it can be used to navigate to the first transition. (using the function `DEVICEAPI_trs_reset()` or `DEVICEAPI_trs_before()`, where `DEVICEAPI_` is to be replaced with your actual device api name).
+Under the hood, the API have an iterator attached to each logic channel. The job of the iterator is to fetch the logic transitions (i.e. logic change) from the compressed storage, and provide it the user of the API, in the most efficient way (offering very fast fetching with minimal memory and processor impact). As with the scripting API, the iterator for each channel needs to be reset, before it can be used to navigate to the first transition. (using the function `DEVICEAPI_trs_reset()` or `DEVICEAPI_trs_before()`, where `DEVICEAPI_` is to be replaced with your actual device api name like in the examples above).
 
 Then, the proper way to retrieve captured samples is to call `DEVICEAPI_trs_next()` until the very last transition is reached for a specific channel.
-
 :::
+
 
 
 
 ### Example: Retrieving Captured Samples 
 
-The following is a example showing how to retrieve captured samples with an SP259i device (C++ Code)
+The following is a example showing how to open a device, launch a capture and retrieve captured samples (C++ Code). Please note that this code is rather a simplistic minimal example than a recommended way of interfacing to the device. Please refer to the dedicated chapter of each device for detailed API reference.
+
+
+<Tabs groupId="la-device">
+<TabItem value="sp259" label="SP259 series">
 
 ```cpp
-
-#include <thread>
-#include <iostream>
-#include <string.h>
-#include "sp259api.h"
-
-void msleep(int ms)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
-void assert_err(ihwapi_err_code_t e)
-{
-    if (e != ihwapi_err_code_t::IHWAPI_OK)
-    {
-        std::cout << "Error thrown by API " << uint32_t(e) << std::endl;
-        throw std::runtime_error("unhandled error");
-    }
-}
-
-int main(int argc, char *argv[])
+int main()
 {
     sp259api_handle h;
-    device_descriptor_t d;
-    ihwapi_err_code_t e = IHWAPI_DEVICE_NOT_OPEN;
-
-    // Create API handle and scan for devices
     sp259api_create_new_handle(&h, sp259api_model_t::sp259_industrial);
     sp259api_create_device_list(h);
-    e = sp259api_device_open_first(h);
+    sp259api_device_open_first(h);
     sp259api_free_device_list(h); 
 
-    if (e == IHWAPI_OK)
+    sp259api_settings_t settings = {};
+    settings.sampling_depth = 10e6;                           
+    settings.post_trig_depth = settings.sampling_depth * 0.9; 
+    settings.s_clk = 250e6;
+
+    sp259api_trigger_description_t trig_a, trig_b;
+    trig_a.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+    trig_a.channel = -1;
+    trig_b.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+    trig_b.channel = -1;
+
+    sp259api_launch_new_capture_simple_trigger(h, trig_a, trig_b, settings);
+
+
+    int64_t total = 0; //total samples
+    int64_t pre = 0; //pre trigger samples
+    int64_t post = 0; //post trigger samples
+
+    while (post < settings.post_trig_depth)
     {
-        sp259api_settings_t settings;
-        memset(&settings, 0, sizeof(settings));
-        settings.sampling_depth = 10e6;                           // 50e6;
-        settings.post_trig_depth = settings.sampling_depth * 0.9; // 5000e6; //float(settings sampling_depth)*0.1f;
-        settings.s_clk = 250e6;
-        settings.state_clk_mode = sp259api_state_clk_mode_t::SCLK_DISABLE;
-        settings.ext_trig_50r = false;
-        for(int i=0; i<SP259_THRESHOLDS_COUNT; i++)
-        {
-            settings.target_vcc[i] = sp259api_target_vcc_t::SP259API_VCC_3V3;
-        }
-        sp259api_trigger_description_t trig_a, trig_b;
-        trig_a.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
-        trig_a.channel = -1;
-        trig_b.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
-        trig_b.channel = -1;
+        e = sp259api_get_available_samples(h, &total, &post);
+        pre = total - post;
+        msleep(100);
 
-        e = sp259api_get_last_error(h);
-        e = sp259api_launch_new_capture_simple_trigger(h, trig_a, trig_b, settings);
-        e = sp259api_get_last_error(h);
-
-        bool cfg_done = false;
-        while (cfg_done == false)
-        {
-            e = sp259api_get_config_done_flag(h, &cfg_done);
-            msleep(10);
-        }
-        std::cout << "cfg done!\n"
-                  << std::endl;
-
-        bool trg_flag = false;
-        while (trg_flag == false)
-        {
-            std::cout << "Waiting for trigger" << std::endl;
-            e = sp259api_get_triggered_flag(h, &trg_flag);
-            msleep(100);
-        }
-
-        std::cout << "Trigged, ready for data!" << std::endl;
-
-        int64_t total = 0; //total samples
-        int64_t pre = 0; //pre trigger samples
-        int64_t post = 0; //post trigger samples
-
-        while (post < settings.post_trig_depth)
-        {
-            e = sp259api_get_available_samples(h, &total, &post);
-            pre = total - post;
-            msleep(100);
-
-            std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +" K, post-trig:" << post / 1000 << " K" << std::endl;
-        }
-
-        const uint8_t ch = 1;
-        sp259api_trs_t trs;
-        sp259api_trs_reset(h, ch);
-        trs.sampple_index = 0;
-        bool is_not_last = true;
-        int trs_count = 0;
-
-        while (is_not_last && trs_count < 10)
-        {
-            sp259api_trs_get_next(h, ch, &trs);
-            printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
-            sp259api_trs_is_not_last(h, ch, &is_not_last);
-            trs_count++;
-        }
-
-        e = sp259api_get_last_error(h);
-
-        e = sp259api_request_abort(h);
-
-        bool ready = false;
-        while (!ready)
-        {
-            std::cout << "Waiting for abort\n"
-                      << std::endl;
-            msleep(100);
-            e = sp259api_get_ready_flag(h, &ready);
-        }
-
-        e = sp259api_free(h);
-        std::cout << "device freed\n"
-                  << std::endl;
-
-        return 0;
+        std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +" K, post-trig:" << post / 1000 << " K" << std::endl;
     }
+
+    const uint8_t ch = 1;
+    sp259api_trs_t trs;
+    sp259api_trs_reset(h, ch);
+    trs.sampple_index = 0;
+    bool is_not_last = true;
+    int trs_count = 0;
+
+    while (is_not_last && trs_count < 10)
+    {
+        sp259api_trs_get_next(h, ch, &trs);
+        printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
+        sp259api_trs_is_not_last(h, ch, &is_not_last);
+        trs_count++;
+    }
+    
+    sp259api_free(h);
+    return 0;
 }
 
 ```
+
+</TabItem>
+<TabItem value="sp1000" label="SP1000G series">
+
+```cpp
+int main() 
+{
+    sp1000gapi_handle h;
+    sp1000gapi_create_new_handle(&h, sp1000gapi_model_t::sp1054g);
+    
+    sp1000gapi_create_device_list(h);
+    sp1000gapi_device_open_first(h);
+    
+    sp1000gapi_settings_t settings = {};
+    settings.s_clk = 250e6;
+    settings.sampling_depth = 10e6;
+    settings.post_trig_depth = settings.sampling_depth * 0.9;
+    settings.thresh_capture_mv[0] = 1000;
+    settings.ext_trig_out_polarity = true;
+
+    for (int ch = 0; ch < SP1000G_CHANNELS_COUNT; ch++) {
+        settings.io_type[ch] = SP1000GAPI_IO_IN;
+        settings.io_pull[ch] = SP1000GAPI_PULL_DOWN;
+    }
+
+    sp1000gapi_trigger_description_t trig_a = {SP1000GAPI_TRG_NOTRIG, -1};
+    sp1000gapi_trigger_description_t trig_b = {SP1000GAPI_TRG_NOTRIG, -1};
+
+    sp1000gapi_launch_new_capture_simple_trigger(h, trig_a, trig_b, settings);
+    
+    int64_t total_samples = 0, post_trig_samples = 0;
+    while (post_trig_samples < settings.post_trig_depth) {
+        sp1000gapi_get_available_samples(h, &total_samples, &post_trig_samples);
+        msleep(100);
+    }
+
+    const uint8_t ch = 1;
+    sp1000gapi_trs_t trs;
+    sp1000gapi_trs_reset(h, ch);
+    trs.sampple_index = 0;
+    bool is_not_last = true;
+    int trs_count = 0;
+
+    while (is_not_last && trs_count < 10)
+    {
+        sp1000gapi_trs_get_next(h, ch, &trs);
+        printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
+        sp1000gapi_trs_is_not_last(h, ch, &is_not_last);
+        trs_count++;
+    }
+
+    sp1000gapi_free(h);
+    return 0;
+}
+```
+
+</TabItem>
+</Tabs>
+
 
 ## Header Files
 
