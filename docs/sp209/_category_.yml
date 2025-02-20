@@ -1,0 +1,4 @@
+label: SP209 API
+position: 3  # Adjust the position in the sidebar if needed
+collapsible: true  # Allows users to collapse the category
+collapsed: false  # The category will be expanded by default
