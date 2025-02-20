@@ -186,7 +186,12 @@ This example captures samples when a change occurs on channel 1.
 ```cpp
 sp1000gapi_trigger_description_t trig_a = {SP1000GAPI_TRG_CHANGE, 1};
 sp1000gapi_trigger_description_t trig_b = {SP1000GAPI_TRG_NOTRIG, -1};
+settings.trig_order = 3; //important!
 ```
+
+!:::caution Important note
+It's important to set trig_order to 3 (Trigger A and B) even though we're only using one trigger engine. The reason behind that is that if trigger B is set to "NO_TRIG", it will generate a trigger instantly, so we still need to wait for trigger A (waiting for the logic change on channel 0).
+:::
 
 The complete example follows the same process as the previous **Capturing Samples** example but uses **trig_a** to define the trigger.
 

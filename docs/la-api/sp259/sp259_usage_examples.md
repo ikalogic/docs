@@ -169,9 +169,10 @@ int main(int argc, char *argv[])
         while (post < settings.post_trig_depth)
         {
             e = sp259api_get_available_samples(h, &total, &post);
+            pre = total - post;
             msleep(100);
 
-            std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +"K, post-trig:" << post / 1000 << "K" << std::endl;
+            std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +" K, post-trig:" << post / 1000 << " K" << std::endl;
         }
 
         const uint8_t ch = 1;

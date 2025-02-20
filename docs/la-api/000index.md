@@ -60,39 +60,132 @@ Then, the proper way to retrieve captured samples is to call `DEVICEAPI_trs_next
 
 ### Example: Retrieving Captured Samples 
 
-The following is a example showing how to retrieve captured samples with an SP209 device (C Code)
+The following is a example showing how to retrieve captured samples with an SP259i device (C++ Code)
 
 ```cpp
-sp209api_handle h;
-sp209api_trs_t trs;
-int64_t post_trig_samples = 0;
-int64_t samples_count = 0;
-sp209api_create_new_handle(&h, SP209API_MODEL_209I);
 
-// Note: Additional steps are required to detect, open, and configure the device
-// they are omitted here for the sake of clarity.
+#include <thread>
+#include <iostream>
+#include <string.h>
+#include "sp259api.h"
 
-bool capt_done = false;
-while (!capt_done)
+void msleep(int ms)
 {
-    sp209api_get_capture_done_flag(h, &capt_done);
-    msleep(200);
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
-const uint8_t ch = 1;
-sp209api_get_available_samples(h, &samples_count, &post_trig_samples);
-sp209api_trs_reset(h, ch);
-trs.sampple_index = 0;
-
-DBG << "Capture complete. Total samples: " << samples_count;
-
-bool is_not_last = true;
-while (is_not_last)
+void assert_err(ihwapi_err_code_t e)
 {
-    sp209api_trs_get_next(h, ch, &trs);
-    DBG << "Transition at " << trs.sampple_index << " [Value: " << int(trs.value) << "]";
-    sp209api_trs_is_not_last(h, ch, &is_not_last);
+    if (e != ihwapi_err_code_t::IHWAPI_OK)
+    {
+        std::cout << "Error thrown by API " << uint32_t(e) << std::endl;
+        throw std::runtime_error("unhandled error");
+    }
 }
+
+int main(int argc, char *argv[])
+{
+    sp259api_handle h;
+    device_descriptor_t d;
+    ihwapi_err_code_t e = IHWAPI_DEVICE_NOT_OPEN;
+
+    // Create API handle and scan for devices
+    sp259api_create_new_handle(&h, sp259api_model_t::sp259_industrial);
+    sp259api_create_device_list(h);
+    e = sp259api_device_open_first(h);
+    sp259api_free_device_list(h); 
+
+    if (e == IHWAPI_OK)
+    {
+        sp259api_settings_t settings;
+        memset(&settings, 0, sizeof(settings));
+        settings.sampling_depth = 10e6;                           // 50e6;
+        settings.post_trig_depth = settings.sampling_depth * 0.9; // 5000e6; //float(settings sampling_depth)*0.1f;
+        settings.s_clk = 250e6;
+        settings.state_clk_mode = sp259api_state_clk_mode_t::SCLK_DISABLE;
+        settings.ext_trig_50r = false;
+        for(int i=0; i<SP259_THRESHOLDS_COUNT; i++)
+        {
+            settings.target_vcc[i] = sp259api_target_vcc_t::SP259API_VCC_3V3;
+        }
+        sp259api_trigger_description_t trig_a, trig_b;
+        trig_a.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+        trig_a.channel = -1;
+        trig_b.type = sp259api_trigger_type_t::SP259API_TRG_NOTRIG;
+        trig_b.channel = -1;
+
+        e = sp259api_get_last_error(h);
+        e = sp259api_launch_new_capture_simple_trigger(h, trig_a, trig_b, settings);
+        e = sp259api_get_last_error(h);
+
+        bool cfg_done = false;
+        while (cfg_done == false)
+        {
+            e = sp259api_get_config_done_flag(h, &cfg_done);
+            msleep(10);
+        }
+        std::cout << "cfg done!\n"
+                  << std::endl;
+
+        bool trg_flag = false;
+        while (trg_flag == false)
+        {
+            std::cout << "Waiting for trigger" << std::endl;
+            e = sp259api_get_triggered_flag(h, &trg_flag);
+            msleep(100);
+        }
+
+        std::cout << "Trigged, ready for data!" << std::endl;
+
+        int64_t total = 0; //total samples
+        int64_t pre = 0; //pre trigger samples
+        int64_t post = 0; //post trigger samples
+
+        while (post < settings.post_trig_depth)
+        {
+            e = sp259api_get_available_samples(h, &total, &post);
+            pre = total - post;
+            msleep(100);
+
+            std::cout << "retrieved transitions, pre-trig: " << pre / 1000 << +" K, post-trig:" << post / 1000 << " K" << std::endl;
+        }
+
+        const uint8_t ch = 1;
+        sp259api_trs_t trs;
+        sp259api_trs_reset(h, ch);
+        trs.sampple_index = 0;
+        bool is_not_last = true;
+        int trs_count = 0;
+
+        while (is_not_last && trs_count < 10)
+        {
+            sp259api_trs_get_next(h, ch, &trs);
+            printf("TRS @ %lld [%d]\n", trs.sampple_index, trs.value);
+            sp259api_trs_is_not_last(h, ch, &is_not_last);
+            trs_count++;
+        }
+
+        e = sp259api_get_last_error(h);
+
+        e = sp259api_request_abort(h);
+
+        bool ready = false;
+        while (!ready)
+        {
+            std::cout << "Waiting for abort\n"
+                      << std::endl;
+            msleep(100);
+            e = sp259api_get_ready_flag(h, &ready);
+        }
+
+        e = sp259api_free(h);
+        std::cout << "device freed\n"
+                  << std::endl;
+
+        return 0;
+    }
+}
+
 ```
 
 ## Header Files
