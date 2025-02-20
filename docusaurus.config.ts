@@ -14,7 +14,7 @@ const config: Config = {
   url: 'https://docs.ikalogic.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/learn-logic-analyzer-api/',
+  baseUrl: '/',
 
   themes: ['@docusaurus/theme-mermaid'],
   // Explicitly enable Mermaid in Markdown
