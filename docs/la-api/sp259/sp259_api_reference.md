@@ -80,7 +80,7 @@ Obtains the device descriptor for a device on the bus. The function `sp259api_cr
 **Return Value:**  
 Returns an `ihwapi_err_code_t` error code.
 
-## General Device Commands (Common to All Variants)
+## General Device Commands
 
 ### sp259api_device_open
 
@@ -167,7 +167,7 @@ Returns an `ihwapi_err_code_t` error code.
 ### sp259api_launch_new_capture_simple_trigger
 
 **Description:**  
-Starts a new capture of samples. Capture begins as soon as possible after the function is called. This function does not offer any trigger options.
+Starts a new capture of samples. Capture begins as soon as possible after the function is called. This function does not offer complex trigger options (like trigger on protocol, or multi-step trigger sequences that can only be defined via ScanaStudio for the time being).
 
 **Parameters:**
 - `sp259api_handle handle`: The handle associated with the API instance.
@@ -318,6 +318,8 @@ Determines if the device is ready or if an operation is still in progress.
 
 **Return Value:**  
 Returns an `ihwapi_err_code_t` error code.
+
+## Error management
 
 ### sp259api_get_last_error
 
