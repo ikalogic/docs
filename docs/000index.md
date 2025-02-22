@@ -22,5 +22,5 @@ Thank you for your understanding.
 ## What You'll Find Here
 - **Getting Started Guides** – Quick setup instructions to get your hardware and software up and running.
 - **Logic Analyzer API Reference** – Full documentation for our logic analyzer APIs, including C/C++ function descriptions, parameters, and example usage.
-- **AT1000 API Reference** – Full documentation for our AT1000 test sequencer, including JavaScript and Python code examples.
+- **AT1000 API Reference** – Full documentation for our AT1000 test sequencers, including JavaScript and Python code examples.
 - **Example Code** – Ready-to-use code snippets to help you interface with our devices effortlessly.
